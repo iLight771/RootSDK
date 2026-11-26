@@ -1,3 +1,4 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
 package com.lightingjb.app
 
 import android.content.pm.PackageManager
@@ -20,12 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush as GradientBrush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.*
-import rikka.shizuku.Shizuku
 import java.io.DataOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
@@ -97,15 +98,12 @@ fun MainAppScreen() {
 fun MainTab() {
     var hasMagisk by remember { mutableStateOf<Boolean?>(null) }
     var hasShizuku by remember { mutableStateOf(false) }
-    var shizukuPermissionGranted by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         hasMagisk = checkMagiskRoot()
-        // Проверка Shizuku
-        hasShizuku = checkShizukuRunning()
-        if (hasShizuku) {
-            shizukuPermissionGranted = checkShizukuPermission()
-        }
+        // Проверяем, установлено ли приложение Shizuku (по имени пакета)
+        hasShizuku = isPackageInstalled("moe.shizuku.privileged.api", context.packageManager)
     }
 
     Column(
@@ -153,33 +151,17 @@ fun MainTab() {
         if (hasMagisk != true) {
             Button(
                 onClick = {
-                    if (hasShizuku && !shizukuPermissionGranted) {
-                        requestShizukuPermission()
-                    } else {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            hasShizuku = checkShizukuRunning()
-                            if (hasShizuku) {
-                                shizukuPermissionGranted = checkShizukuPermission()
-                            }
-                        }
-                    }
+                    // Просто обновляем статус (проверяем установлено ли приложение)
+                    hasShizuku = isPackageInstalled("moe.shizuku.privileged.api", context.packageManager)
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = when {
-                        !hasShizuku -> Color(0xCC9E9E9E)
-                        shizukuPermissionGranted -> Color(0xCC4CAF50)
-                        else -> Color(0xCCFF9800)
-                    }
+                    containerColor = if (hasShizuku) Color(0xCC4CAF50) else Color(0xCC9E9E9E)
                 ),
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
                 Text(
-                    text = when {
-                        !hasShizuku -> "Shizuku: Не запущен"
-                        shizukuPermissionGranted -> "Shizuku: Готов"
-                        else -> "Shizuku: Дать разрешение"
-                    },
+                    text = if (hasShizuku) "Shizuku: Установлен" else "Shizuku: Не установлен",
                     color = Color.White
                 )
             }
@@ -211,7 +193,7 @@ fun Clock26Widget() {
 @Composable
 fun CustomizationTab(onPluginClick: (PluginItem) -> Unit) {
     val plugins = listOf(
-        PluginItem("clock26", "Clock26", "Заменяет стандартные часы на широкий шрифт в стиле iOS 26. Требует Shizuku."),
+        PluginItem("clock26", "Clock26", "Заменяет стандартные часы на широкий шрифт в стиле iOS 26."),
         PluginItem("clear_bg", "Прозрачный фон", "Делает фон системного интерфейса прозрачным."),
         PluginItem("custom_icons", "Свои иконки", "Позволяет заменить иконки приложений на свои.")
     )
@@ -246,7 +228,6 @@ fun CustomizationTab(onPluginClick: (PluginItem) -> Unit) {
 @Composable
 fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
     val isInstalled = installedPlugins.contains(plugin.id)
-    var statusMessage by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier.fillMaxSize().background(
@@ -280,24 +261,8 @@ fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
                     onClick = {
                         if (isInstalled) {
                             installedPlugins.remove(plugin.id)
-                            statusMessage = "Плагин выключен"
                         } else {
-                            if (plugin.id == "clock26") {
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    val success = hideClockViaShizuku()
-                                    withContext(Dispatchers.Main) {
-                                        if (success) {
-                                            installedPlugins.add(plugin.id)
-                                            statusMessage = "Часы скрыты! Плагин активирован."
-                                        } else {
-                                            statusMessage = "Ошибка: проверьте Shizuku"
-                                        }
-                                    }
-                                }
-                            } else {
-                                installedPlugins.add(plugin.id)
-                                statusMessage = "Плагин активирован"
-                            }
+                            installedPlugins.add(plugin.id)
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -313,52 +278,16 @@ fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
                         fontWeight = FontWeight.Bold
                     )
                 }
-
-                if (statusMessage.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = statusMessage, color = Color.DarkGray, textAlign = TextAlign.Center)
-                }
             }
         }
     }
 }
 
-// --- Shizuku ---
-
-fun checkShizukuRunning(): Boolean {
+fun isPackageInstalled(packageName: String, pm: PackageManager): Boolean {
     return try {
-        Shizuku.pingBinder()
-    } catch (e: Exception) {
-        false
-    }
-}
-
-fun checkShizukuPermission(): Boolean {
-    return try {
-        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-    } catch (e: Exception) {
-        false
-    }
-}
-
-fun requestShizukuPermission() {
-    try {
-        Shizuku.requestPermission(0)
-    } catch (e: Exception) {
-        // Ошибка
-    }
-}
-
-// Заглушка для скрытия часов (пока без реального выполнения, чтобы сборка прошла)
-fun hideClockViaShizuku(): Boolean {
-    return try {
-        if (!checkShizukuRunning() || !checkShizukuPermission()) {
-            return false
-        }
-        // TODO: Вставить реальный код для выполнения команды через Shizuku
-        // Пока что просто возвращаем true (имитация успеха)
-        true 
-    } catch (e: Exception) {
+        pm.getPackageInfo(packageName, 0)
+        true
+    } catch (e: PackageManager.NameNotFoundException) {
         false
     }
 }
