@@ -8,10 +8,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Brush // Иконка кисточки
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,28 +42,42 @@ class MainActivity : ComponentActivity() {
 fun MainAppScreen() {
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    icon = { Icon(Icons.Filled.Home, contentDescription = "Главная") },
-                    label = { Text("Главная") },
-                    selected = selectedTab == 0,
-                    onClick = { selectedTab = 0 }
+    // Основной фон приложения (светлый градиент)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))
                 )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Filled.Settings, contentDescription = "Кастомизация") },
-                    label = { Text("Кастомизация") },
-                    selected = selectedTab == 1,
-                    onClick = { selectedTab = 1 }
-                )
+            )
+    ) {
+        Scaffold(
+            containerColor = Color.Transparent, // Прозрачный фон, чтобы был виден градиент
+            bottomBar = {
+                NavigationBar(
+                    containerColor = Color(0xCCFFFFFF), // Полупрозрачный белый (Liquid Glass)
+                ) {
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.Home, contentDescription = "Главная") },
+                        label = { Text("Главная") },
+                        selected = selectedTab == 0,
+                        onClick = { selectedTab = 0 }
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Filled.Brush, contentDescription = "Кастомизация") },
+                        label = { Text("Кастомизация") },
+                        selected = selectedTab == 1,
+                        onClick = { selectedTab = 1 }
+                    )
+                }
             }
-        }
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            when (selectedTab) {
-                0 -> MainTab(onNavigateToCustomization = { selectedTab = 1 })
-                1 -> CustomizationTab()
+        ) { paddingValues ->
+            Box(modifier = Modifier.padding(paddingValues)) {
+                when (selectedTab) {
+                    0 -> MainTab(onNavigateToCustomization = { selectedTab = 1 })
+                    1 -> CustomizationTab()
+                }
             }
         }
     }
@@ -74,7 +89,6 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
     var showSmoothEffect by remember { mutableStateOf(false) }
     var isTextVisible by remember { mutableStateOf(false) }
 
-    // Анимация плавного появления текста
     val textAlpha by animateFloatAsState(
         targetValue = if (isTextVisible) 1f else 0f,
         animationSpec = tween(durationMillis = 800),
@@ -84,7 +98,7 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
     LaunchedEffect(showSmoothEffect) {
         if (showSmoothEffect) {
             isTextVisible = true
-            delay(1500) // Ждем 1.5 секунды
+            delay(1500)
             isTextVisible = false
             showSmoothEffect = false
             onNavigateToCustomization()
@@ -92,21 +106,22 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Основной контент
         Column(
             modifier = Modifier.fillMaxSize().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            // Белая надпись
             Text(
                 text = "RootSDK",
-                fontSize = 32.sp,
+                fontSize = 36.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = Color.White,
+                modifier = Modifier.alpha(0.9f)
             )
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Кнопка 1: Проверка Magisk
+            // Кнопка проверки Magisk (в стиле Liquid Glass)
             Button(
                 onClick = {
                     CoroutineScope(Dispatchers.IO).launch {
@@ -117,9 +132,10 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (magiskStatus == true) Color(0xFF4CAF50) else Color.Gray
+                    containerColor = if (magiskStatus == true) Color(0xCC4CAF50) else Color(0xCC9E9E9E)
                 ),
-                modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
                 Text(
                     text = when (magiskStatus) {
@@ -127,33 +143,36 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
                         false -> "Magisk: Не найден"
                         null -> "Проверить Magisk"
                     },
-                    color = Color.White
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Кнопка 2: Перейти к кастомизации
+            // Кнопка перехода (в стиле Liquid Glass)
             Button(
                 onClick = { showSmoothEffect = true },
-                enabled = magiskStatus == true, // Активна только если есть рут
-                modifier = Modifier.fillMaxWidth()
+                enabled = magiskStatus == true,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xCC6200EE) // Полупрозрачный фиолетовый (как в Sileo)
+                ),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
-                Text("Перейти к кастомизации")
+                Text("Перейти к кастомизации", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
 
-        // Оверлей с зеленым фоном как в Dopamine
+        // Оверлей с зеленым градиентом
         if (showSmoothEffect) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFF4CAF50), // Светло-зеленый
-                                Color(0xFF2E7D32)  // Темно-зеленый
-                            )
+                            colors = listOf(Color(0xFF4CAF50), Color(0xFF2E7D32))
                         )
                     ),
                 contentAlignment = Alignment.Center
@@ -164,7 +183,7 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.alpha(textAlpha) // Плавное появление
+                    modifier = Modifier.alpha(textAlpha)
                 )
             }
         }
@@ -173,9 +192,9 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
 
 @Composable
 fun CustomizationTab() {
-    // Пример списка режимов кастомизации
-    val options = listOf("Скрыть часы", "Заменить иконку", "Прозрачный фон", "Свои шрифты")
-    var checkedStates by remember { mutableStateOf(List(options.size) { false }) }
+    // Пустой список (вы сами скажете, что добавить)
+    val options = listOf<String>() // Здесь будут ваши функции
+    var activeStates by remember { mutableStateOf(List(options.size) { false }) }
 
     Column(
         modifier = Modifier
@@ -187,26 +206,60 @@ fun CustomizationTab() {
             text = "Режимы кастомизации",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
+            color = Color(0xFF1B5E20),
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        options.forEachIndexed { index, title ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(text = title, fontSize = 18.sp)
-                Switch(
-                    checked = checkedStates[index],
-                    onCheckedChange = { isChecked ->
-                        checkedStates = checkedStates.toMutableList().apply { this[index] = isChecked }
+        // Если список пуст, покажем заглушку
+        if (options.isEmpty()) {
+            Text(
+                text = "Здесь пока ничего нет.\nДобавьте функции в код.",
+                color = Color.Gray,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
+            )
+        } else {
+            options.forEachIndexed { index, title ->
+                // Стеклянная карточка
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 6.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xCCFFFFFF) // Полупрозрачный белый (Liquid Glass)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                        
+                        // Кнопка "Установить" / "Выключить" (в стиле Sileo)
+                        Button(
+                            onClick = {
+                                activeStates = activeStates.toMutableList().apply { this[index] = !this[index] }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (activeStates[index]) Color(0xCCF44336) else Color(0xCC4CAF50)
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        ) {
+                            Text(
+                                text = if (activeStates[index]) "Выключить" else "Установить",
+                                color = Color.White,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
-                )
+                }
             }
-            Divider()
         }
     }
 }
