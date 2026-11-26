@@ -38,7 +38,7 @@ fun RootAppScreen() {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "LightingJB Android",
+            text = "RootSDK",
             style = MaterialTheme.typography.headlineLarge,
             color = MaterialTheme.colorScheme.primary
         )
