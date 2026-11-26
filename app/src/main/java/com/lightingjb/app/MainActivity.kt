@@ -11,14 +11,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Brush // Иконка кисточки
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings // Используем шестеренку, если кисточка не работает
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Brush as GradientBrush // Переименовываем градиент, чтобы избежать конфликта
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -42,21 +42,20 @@ class MainActivity : ComponentActivity() {
 fun MainAppScreen() {
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    // Основной фон приложения (светлый градиент)
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
+                GradientBrush.verticalGradient( // Используем переименованный Brush
                     colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))
                 )
             )
     ) {
         Scaffold(
-            containerColor = Color.Transparent, // Прозрачный фон, чтобы был виден градиент
+            containerColor = Color.Transparent,
             bottomBar = {
                 NavigationBar(
-                    containerColor = Color(0xCCFFFFFF), // Полупрозрачный белый (Liquid Glass)
+                    containerColor = Color(0xCCFFFFFF),
                 ) {
                     NavigationBarItem(
                         icon = { Icon(Icons.Filled.Home, contentDescription = "Главная") },
@@ -65,7 +64,7 @@ fun MainAppScreen() {
                         onClick = { selectedTab = 0 }
                     )
                     NavigationBarItem(
-                        icon = { Icon(Icons.Filled.Brush, contentDescription = "Кастомизация") },
+                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Кастомизация") },
                         label = { Text("Кастомизация") },
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 }
@@ -111,7 +110,6 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Белая надпись
             Text(
                 text = "RootSDK",
                 fontSize = 36.sp,
@@ -121,7 +119,6 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Кнопка проверки Magisk (в стиле Liquid Glass)
             Button(
                 onClick = {
                     CoroutineScope(Dispatchers.IO).launch {
@@ -151,12 +148,11 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Кнопка перехода (в стиле Liquid Glass)
             Button(
                 onClick = { showSmoothEffect = true },
                 enabled = magiskStatus == true,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xCC6200EE) // Полупрозрачный фиолетовый (как в Sileo)
+                    containerColor = Color(0xCC6200EE)
                 ),
                 shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
@@ -165,13 +161,12 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
             }
         }
 
-        // Оверлей с зеленым градиентом
         if (showSmoothEffect) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
-                        Brush.verticalGradient(
+                        GradientBrush.verticalGradient(
                             colors = listOf(Color(0xFF4CAF50), Color(0xFF2E7D32))
                         )
                     ),
@@ -192,8 +187,7 @@ fun MainTab(onNavigateToCustomization: () -> Unit) {
 
 @Composable
 fun CustomizationTab() {
-    // Пустой список (вы сами скажете, что добавить)
-    val options = listOf<String>() // Здесь будут ваши функции
+    val options = listOf<String>()
     var activeStates by remember { mutableStateOf(List(options.size) { false }) }
 
     Column(
@@ -210,7 +204,6 @@ fun CustomizationTab() {
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Если список пуст, покажем заглушку
         if (options.isEmpty()) {
             Text(
                 text = "Здесь пока ничего нет.\nДобавьте функции в код.",
@@ -221,14 +214,13 @@ fun CustomizationTab() {
             )
         } else {
             options.forEachIndexed { index, title ->
-                // Стеклянная карточка
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 6.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0xCCFFFFFF) // Полупрозрачный белый (Liquid Glass)
+                        containerColor = Color(0xCCFFFFFF)
                     )
                 ) {
                     Row(
@@ -240,7 +232,6 @@ fun CustomizationTab() {
                     ) {
                         Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                         
-                        // Кнопка "Установить" / "Выключить" (в стиле Sileo)
                         Button(
                             onClick = {
                                 activeStates = activeStates.toMutableList().apply { this[index] = !this[index] }
