@@ -1,5 +1,6 @@
-package com.lightingjb.app // Убедитесь, что package совпадает с вашим
+package com.lightingjb.app
 
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,10 +20,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush as GradientBrush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.*
+import rikka.shizuku.Shizuku
+import java.io.DataOutputStream
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,15 +42,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Данные для плагина
 data class PluginItem(val id: String, val name: String, val description: String)
+
+val installedPlugins = mutableStateListOf<String>()
 
 @Composable
 fun MainAppScreen() {
     var selectedTab by remember { mutableIntStateOf(0) }
     var selectedPlugin by remember { mutableStateOf<PluginItem?>(null) }
 
-    // Если выбран плагин, показываем его страницу вместо вкладок
     if (selectedPlugin != null) {
         PluginDetailScreen(plugin = selectedPlugin!!, onBack = { selectedPlugin = null })
         return
@@ -89,33 +96,128 @@ fun MainAppScreen() {
 
 @Composable
 fun MainTab() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    var hasMagisk by remember { mutableStateOf<Boolean?>(null) }
+    var hasShizuku by remember { mutableStateOf(false) }
+    var shizukuPermissionGranted by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        hasMagisk = checkMagiskRoot()
+        hasShizuku = checkShizukuRunning()
+        if (hasShizuku) {
+            shizukuPermissionGranted = checkShizukuPermission()
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
+        if (installedPlugins.contains("clock26")) {
+            Clock26Widget()
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+
         Text(
             text = "RootSDK",
             fontSize = 36.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
         )
+        Spacer(modifier = Modifier.height(40.dp))
+
+        Button(
+            onClick = {
+                CoroutineScope(Dispatchers.IO).launch {
+                    hasMagisk = checkMagiskRoot()
+                }
+            },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (hasMagisk == true) Color(0xCC4CAF50) else Color(0xCC9E9E9E)
+            ),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp)
+        ) {
+            Text(
+                text = when (hasMagisk) {
+                    true -> "Magisk: Обнаружен"
+                    false -> "Magisk: Не найден"
+                    null -> "Проверить Magisk"
+                },
+                color = Color.White
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (hasMagisk != true) {
+            Button(
+                onClick = {
+                    if (hasShizuku && !shizukuPermissionGranted) {
+                        requestShizukuPermission()
+                    } else {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            hasShizuku = checkShizukuRunning()
+                            if (hasShizuku) {
+                                shizukuPermissionGranted = checkShizukuPermission()
+                            }
+                        }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = when {
+                        !hasShizuku -> Color(0xCC9E9E9E)
+                        shizukuPermissionGranted -> Color(0xCC4CAF50)
+                        else -> Color(0xCCFF9800)
+                    }
+                ),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp)
+            ) {
+                Text(
+                    text = when {
+                        !hasShizuku -> "Shizuku: Не запущен"
+                        shizukuPermissionGranted -> "Shizuku: Готов"
+                        else -> "Shizuku: Дать разрешение"
+                    },
+                    color = Color.White
+                )
+            }
+        }
     }
 }
 
 @Composable
+fun Clock26Widget() {
+    var currentTime by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+            currentTime = sdf.format(Date())
+            delay(1000)
+        }
+    }
+
+    Text(
+        text = currentTime,
+        fontSize = 80.sp,
+        fontWeight = FontWeight.ExtraBold,
+        color = Color(0xFF1B5E20),
+        letterSpacing = 4.sp
+    )
+}
+
+@Composable
 fun CustomizationTab(onPluginClick: (PluginItem) -> Unit) {
-    // Список плагинов
     val plugins = listOf(
-        PluginItem("hide_clock", "Скрыть часы", "Убирает стандартные часы с экрана блокировки."),
+        PluginItem("clock26", "Clock26", "Заменяет стандартные часы на широкий шрифт в стиле iOS 26. Требует Shizuku."),
         PluginItem("clear_bg", "Прозрачный фон", "Делает фон системного интерфейса прозрачным."),
         PluginItem("custom_icons", "Свои иконки", "Позволяет заменить иконки приложений на свои.")
     )
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState())
+        modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())
     ) {
         Text(
             text = "Плагины",
@@ -127,10 +229,7 @@ fun CustomizationTab(onPluginClick: (PluginItem) -> Unit) {
 
         plugins.forEach { plugin ->
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp)
-                    .clickable { onPluginClick(plugin) }, // Переход на страницу плагина
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onPluginClick(plugin) },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xCCFFFFFF))
             ) {
@@ -146,16 +245,13 @@ fun CustomizationTab(onPluginClick: (PluginItem) -> Unit) {
 
 @Composable
 fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
-    var isInstalled by remember { mutableStateOf(false) }
+    val isInstalled = installedPlugins.contains(plugin.id)
+    var statusMessage by remember { mutableStateOf("") }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                GradientBrush.verticalGradient(
-                    colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))
-                )
-            )
+        modifier = Modifier.fillMaxSize().background(
+            GradientBrush.verticalGradient(colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9)))
+        )
     ) {
         Scaffold(
             containerColor = Color.Transparent,
@@ -172,29 +268,38 @@ fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
             }
         ) { paddingValues ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(24.dp),
+                modifier = Modifier.fillMaxSize().padding(paddingValues).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = plugin.name,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1B5E20)
-                )
+                Text(text = plugin.name, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = plugin.description,
-                    fontSize = 16.sp,
-                    color = Color.DarkGray,
-                    textAlign = TextAlign.Center
-                )
+                Text(text = plugin.description, fontSize = 16.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
-                    onClick = { isInstalled = !isInstalled },
+                    onClick = {
+                        if (isInstalled) {
+                            installedPlugins.remove(plugin.id)
+                            statusMessage = "Плагин выключен"
+                        } else {
+                            if (plugin.id == "clock26") {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    val success = hideClockViaShizuku()
+                                    withContext(Dispatchers.Main) {
+                                        if (success) {
+                                            installedPlugins.add(plugin.id)
+                                            statusMessage = "Часы скрыты! Плагин активирован."
+                                        } else {
+                                            statusMessage = "Ошибка: Shizuku не запущен или нет прав"
+                                        }
+                                    }
+                                }
+                            } else {
+                                installedPlugins.add(plugin.id)
+                                statusMessage = "Плагин активирован"
+                            }
+                        }
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isInstalled) Color(0xCCF44336) else Color(0xCC4CAF50)
                     ),
@@ -208,7 +313,72 @@ fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
                         fontWeight = FontWeight.Bold
                     )
                 }
+
+                if (statusMessage.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(text = statusMessage, color = Color.DarkGray, textAlign = TextAlign.Center)
+                }
             }
         }
+    }
+}
+
+// --- Функции Shizuku ---
+
+fun checkShizukuRunning(): Boolean {
+    return try {
+        Shizuku.pingBinder()
+    } catch (e: Exception) {
+        false
+    }
+}
+
+fun checkShizukuPermission(): Boolean {
+    return try {
+        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+    } catch (e: Exception) {
+        false
+    }
+}
+
+fun requestShizukuPermission() {
+    try {
+        Shizuku.requestPermission(0)
+    } catch (e: Exception) {
+        // Ошибка
+    }
+}
+
+fun hideClockViaShizuku(): Boolean {
+    return try {
+        if (!checkShizukuRunning() || !checkShizukuPermission()) {
+            return false
+        }
+        // В реальной библиотеке Shizuku.newProcess может быть скрыт,
+        // используем рефлексию
+        val method = Shizuku::class.java.getDeclaredMethod(
+            "newProcess",
+            Array<String>::class.java,
+            Array<String>::class.java,
+            String::class.java
+        )
+        method.isAccessible = true
+        val process = method.invoke(null, arrayOf("sh", "-c", "settings put secure icon_blacklist clock"), null, null) as Process
+        process.waitFor() == 0
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+fun checkMagiskRoot(): Boolean {
+    return try {
+        val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "id"))
+        val os = DataOutputStream(process.outputStream)
+        os.writeBytes("exit\n")
+        os.flush()
+        process.waitFor() == 0
+    } catch (e: Exception) {
+        false
     }
 }
