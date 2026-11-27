@@ -273,9 +273,25 @@ fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
             Button(
                 onClick = {
                     if (isInstalled) {
-                        installedPlugins.remove(plugin.id)
-                        statusMessage = "Плагин выключен"
+                        // Выключение: возвращаем часы
+                        if (plugin.id == "clock26") {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val success = showStatusBarClockViaShizuku()
+                                withContext(Dispatchers.Main) {
+                                    if (success) {
+                                        installedPlugins.remove(plugin.id)
+                                        statusMessage = "Часы возвращены!"
+                                    } else {
+                                        statusMessage = "Ошибка при возврате часов"
+                                    }
+                                }
+                            }
+                        } else {
+                            installedPlugins.remove(plugin.id)
+                            statusMessage = "Плагин выключен"
+                        }
                     } else {
+                        // Включение: скрываем часы
                         if (plugin.id == "clock26") {
                             CoroutineScope(Dispatchers.IO).launch {
                                 val success = hideStatusBarClockViaShizuku()
@@ -355,6 +371,26 @@ fun hideStatusBarClockViaShizuku(): Boolean {
         )
         method.isAccessible = true
         val process = method.invoke(null, arrayOf("sh", "-c", "settings put secure icon_blacklist clock"), null, null) as Process
+        process.waitFor() == 0
+    } catch (e: Exception) {
+        e.printStackTrace()
+        false
+    }
+}
+
+fun showStatusBarClockViaShizuku(): Boolean {
+    return try {
+        if (!checkShizukuRunning() || !checkShizukuPermission()) {
+            return false
+        }
+        val method = Shizuku::class.java.getDeclaredMethod(
+            "newProcess",
+            Array<String>::class.java,
+            Array<String>::class.java,
+            String::class.java
+        )
+        method.isAccessible = true
+        val process = method.invoke(null, arrayOf("sh", "-c", "settings delete secure icon_blacklist clock"), null, null) as Process
         process.waitFor() == 0
     } catch (e: Exception) {
         e.printStackTrace()
