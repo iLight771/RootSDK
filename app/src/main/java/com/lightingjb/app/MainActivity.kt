@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -42,7 +43,6 @@ class MainActivity : ComponentActivity() {
 }
 
 data class PluginItem(val id: String, val name: String, val description: String)
-
 val installedPlugins = mutableStateListOf<String>()
 
 @Composable
@@ -51,19 +51,15 @@ fun MainAppScreen() {
     var selectedPlugin by remember { mutableStateOf<PluginItem?>(null) }
 
     if (selectedPlugin != null) {
-        PluginDetailScreen(plugin = selectedPlugin!!, onBack = { selectedPlugin = null })
+        if (selectedPlugin?.id == "icon_painter") {
+            IconPainterScreen(onBack = { selectedPlugin = null })
+        } else {
+            PluginDetailScreen(plugin = selectedPlugin!!, onBack = { selectedPlugin = null })
+        }
         return
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                GradientBrush.verticalGradient(
-                    colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))
-                )
-            )
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(GradientBrush.verticalGradient(colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))))) {
         Scaffold(
             containerColor = Color.Transparent,
             bottomBar = {
@@ -102,9 +98,7 @@ fun MainTab() {
     LaunchedEffect(Unit) {
         hasMagisk = checkMagiskRoot()
         shizukuRunning = checkShizukuRunning()
-        if (shizukuRunning) {
-            shizukuGranted = checkShizukuPermission()
-        }
+        if (shizukuRunning) shizukuGranted = checkShizukuPermission()
     }
 
     Column(
@@ -116,35 +110,16 @@ fun MainTab() {
             Clock26Widget()
             Spacer(modifier = Modifier.height(32.dp))
         }
-
-        Text(
-            text = "RootSDK",
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+        Text(text = "RootSDK", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = Color.White)
         Spacer(modifier = Modifier.height(40.dp))
 
         Button(
-            onClick = {
-                CoroutineScope(Dispatchers.IO).launch {
-                    hasMagisk = checkMagiskRoot()
-                }
-            },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (hasMagisk == true) Color(0xCC4CAF50) else Color(0xCC9E9E9E)
-            ),
+            onClick = { CoroutineScope(Dispatchers.IO).launch { hasMagisk = checkMagiskRoot() } },
+            colors = ButtonDefaults.buttonColors(containerColor = if (hasMagisk == true) Color(0xCC4CAF50) else Color(0xCC9E9E9E)),
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            Text(
-                text = when (hasMagisk) {
-                    true -> "Magisk: Обнаружен"
-                    false -> "Magisk: Не найден"
-                    null -> "Проверить Magisk"
-                },
-                color = Color.White
-            )
+            Text(text = if (hasMagisk == true) "Magisk: Обнаружен" else "Проверить Magisk", color = Color.White)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -157,9 +132,7 @@ fun MainTab() {
                     } else {
                         CoroutineScope(Dispatchers.IO).launch {
                             shizukuRunning = checkShizukuRunning()
-                            if (shizukuRunning) {
-                                shizukuGranted = checkShizukuPermission()
-                            }
+                            if (shizukuRunning) shizukuGranted = checkShizukuPermission()
                         }
                     }
                 },
@@ -178,8 +151,7 @@ fun MainTab() {
                         !shizukuRunning -> "Shizuku: Не запущен"
                         shizukuGranted -> "Shizuku: Готов"
                         else -> "Shizuku: Дать разрешение"
-                    },
-                    color = Color.White
+                    }, color = Color.White
                 )
             }
         }
@@ -189,43 +161,23 @@ fun MainTab() {
 @Composable
 fun Clock26Widget() {
     var currentTime by remember { mutableStateOf("") }
-
     LaunchedEffect(Unit) {
         while (true) {
-            val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
-            currentTime = sdf.format(Date())
+            currentTime = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
             delay(1000)
         }
     }
-
-    Text(
-        text = currentTime,
-        fontSize = 80.sp,
-        fontWeight = FontWeight.ExtraBold,
-        color = Color(0xFF1B5E20),
-        letterSpacing = 4.sp
-    )
+    Text(text = currentTime, fontSize = 80.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1B5E20), letterSpacing = 4.sp)
 }
 
 @Composable
 fun CustomizationTab(onPluginClick: (PluginItem) -> Unit) {
     val plugins = listOf(
-        PluginItem("clock26", "Clock26", "Скрывает часы в статус-баре через Shizuku."),
-        PluginItem("clear_bg", "Прозрачный фон", "Делает фон системного интерфейса прозрачным."),
-        PluginItem("custom_icons", "Свои иконки", "Позволяет заменить иконки приложений на свои.")
+        PluginItem("icon_painter", "Icon Painter", "Перекрашивает иконки системно через Shizuku."),
+        PluginItem("clock26", "Clock26", "Скрывает часы в статус-баре.")
     )
-
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())
-    ) {
-        Text(
-            text = "Плагины",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1B5E20),
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(rememberScrollState())) {
+        Text(text = "Плагины", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20), modifier = Modifier.padding(bottom = 16.dp))
         plugins.forEach { plugin ->
             Card(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp).clickable { onPluginClick(plugin) },
@@ -243,29 +195,69 @@ fun CustomizationTab(onPluginClick: (PluginItem) -> Unit) {
 }
 
 @Composable
+fun IconPainterScreen(onBack: () -> Unit) {
+    val colors = listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow, Color.Magenta, Color.Cyan, Color.White)
+    var selectedColor by remember { mutableStateOf(Color.Blue) }
+    var status by remember { mutableStateOf("") }
+
+    Box(modifier = Modifier.fillMaxSize().background(GradientBrush.verticalGradient(colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))))) {
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Назад", tint = Color(0xFF1B5E20)) }
+                Text("Icon Painter", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
+            }
+            Spacer(modifier = Modifier.height(32.dp))
+            Text("Выберите цвет:", fontSize = 18.sp, color = Color.DarkGray)
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                colors.forEach { color ->
+                    Box(modifier = Modifier.size(40.dp).background(color, CircleShape).clickable { selectedColor = color }.then(if (selectedColor == color) Modifier.padding(4.dp) else Modifier))
+                }
+            }
+            Spacer(modifier = Modifier.height(40.dp))
+            Button(
+                onClick = {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val hexColor = String.format("#%06X", 0xFFFFFF and selectedColor.value.toInt())
+                        val success = applyIconTintViaShizuku(hexColor)
+                        withContext(Dispatchers.Main) { status = if (success) "Цвет применен!" else "Ошибка (Shizuku не запущен)" }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xCC4CAF50)),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp)
+            ) { Text("Применить ко всем иконкам", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val success = resetIconTintViaShizuku()
+                        withContext(Dispatchers.Main) { status = if (success) "Сброшено!" else "Ошибка сброса" }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xCCF44336)),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp)
+            ) { Text("Сбросить (вернуть как было)", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+            if (status.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = status, color = Color.DarkGray, textAlign = TextAlign.Center)
+            }
+        }
+    }
+}
+
+@Composable
 fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
     val isInstalled = installedPlugins.contains(plugin.id)
     var statusMessage by remember { mutableStateOf("") }
 
-    Box(
-        modifier = Modifier.fillMaxSize().background(
-            GradientBrush.verticalGradient(colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9)))
-        )
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Назад", tint = Color(0xFF1B5E20))
-                }
+    Box(modifier = Modifier.fillMaxSize().background(GradientBrush.verticalGradient(colors = listOf(Color(0xFFE8F5E9), Color(0xFFC8E6C9))))) {
+        Column(modifier = Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, contentDescription = "Назад", tint = Color(0xFF1B5E20)) }
                 Text(text = plugin.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
             }
-
             Spacer(modifier = Modifier.height(32.dp))
             Text(text = plugin.description, fontSize = 16.sp, color = Color.DarkGray, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(32.dp))
@@ -273,17 +265,16 @@ fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
             Button(
                 onClick = {
                     if (isInstalled) {
-                        // Выключение: возвращаем часы
+                        // ВОЗВРАТ ЧАСОВ
                         if (plugin.id == "clock26") {
                             CoroutineScope(Dispatchers.IO).launch {
-                                val success = showStatusBarClockViaShizuku()
+                                // 1. Очищаем черный список
+                                showStatusBarClockViaShizuku()
+                                // 2. Перезапускаем SystemUI, чтобы изменения применились
+                                restartSystemUI()
                                 withContext(Dispatchers.Main) {
-                                    if (success) {
-                                        installedPlugins.remove(plugin.id)
-                                        statusMessage = "Часы возвращены!"
-                                    } else {
-                                        statusMessage = "Ошибка при возврате часов"
-                                    }
+                                    installedPlugins.remove(plugin.id)
+                                    statusMessage = "Часы возвращены! (если не появились, перезагрузите телефон)"
                                 }
                             }
                         } else {
@@ -291,16 +282,16 @@ fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
                             statusMessage = "Плагин выключен"
                         }
                     } else {
-                        // Включение: скрываем часы
+                        // СКРЫТИЕ ЧАСОВ
                         if (plugin.id == "clock26") {
                             CoroutineScope(Dispatchers.IO).launch {
                                 val success = hideStatusBarClockViaShizuku()
                                 withContext(Dispatchers.Main) {
                                     if (success) {
                                         installedPlugins.add(plugin.id)
-                                        statusMessage = "Часы в статус-баре скрыты!"
+                                        statusMessage = "Часы скрыты!"
                                     } else {
-                                        statusMessage = "Ошибка: Shizuku не запущен или нет прав"
+                                        statusMessage = "Ошибка: Shizuku не запущен"
                                     }
                                 }
                             }
@@ -310,20 +301,12 @@ fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
                         }
                     }
                 },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isInstalled) Color(0xCCF44336) else Color(0xCC4CAF50)
-                ),
+                colors = ButtonDefaults.buttonColors(containerColor = if (isInstalled) Color(0xCCF44336) else Color(0xCC4CAF50)),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
-                Text(
-                    text = if (isInstalled) "Выключить" else "Установить",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(text = if (isInstalled) "Выключить" else "Установить", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
-
             if (statusMessage.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(text = statusMessage, color = Color.DarkGray, textAlign = TextAlign.Center)
@@ -332,70 +315,61 @@ fun PluginDetailScreen(plugin: PluginItem, onBack: () -> Unit) {
     }
 }
 
-// --- Работа с Shizuku ---
+// --- Функции Shizuku ---
+fun checkShizukuRunning(): Boolean = try { Shizuku.pingBinder() } catch (e: Exception) { false }
+fun checkShizukuPermission(): Boolean = try { Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED } catch (e: Exception) { false }
+fun requestShizukuPermission() { try { Shizuku.requestPermission(0) } catch (e: Exception) { } }
 
-fun checkShizukuRunning(): Boolean {
+fun applyIconTintViaShizuku(hexColor: String): Boolean {
     return try {
-        Shizuku.pingBinder()
-    } catch (e: Exception) {
-        false
-    }
+        if (!checkShizukuRunning() || !checkShizukuPermission()) return false
+        val method = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
+        method.isAccessible = true
+        val process = method.invoke(null, arrayOf("sh", "-c", "settings put secure icon_color_filter \"$hexColor\""), null, null) as Process
+        process.waitFor() == 0
+    } catch (e: Exception) { e.printStackTrace(); false }
 }
 
-fun checkShizukuPermission(): Boolean {
+fun resetIconTintViaShizuku(): Boolean {
     return try {
-        Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
-    } catch (e: Exception) {
-        false
-    }
-}
-
-fun requestShizukuPermission() {
-    try {
-        Shizuku.requestPermission(0)
-    } catch (e: Exception) {
-        // Ошибка
-    }
+        if (!checkShizukuRunning() || !checkShizukuPermission()) return false
+        val method = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
+        method.isAccessible = true
+        val process = method.invoke(null, arrayOf("sh", "-c", "settings delete secure icon_color_filter"), null, null) as Process
+        process.waitFor() == 0
+    } catch (e: Exception) { e.printStackTrace(); false }
 }
 
 fun hideStatusBarClockViaShizuku(): Boolean {
     return try {
-        if (!checkShizukuRunning() || !checkShizukuPermission()) {
-            return false
-        }
-        val method = Shizuku::class.java.getDeclaredMethod(
-            "newProcess",
-            Array<String>::class.java,
-            Array<String>::class.java,
-            String::class.java
-        )
+        if (!checkShizukuRunning() || !checkShizukuPermission()) return false
+        val method = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
         method.isAccessible = true
         val process = method.invoke(null, arrayOf("sh", "-c", "settings put secure icon_blacklist clock"), null, null) as Process
         process.waitFor() == 0
-    } catch (e: Exception) {
-        e.printStackTrace()
-        false
-    }
+    } catch (e: Exception) { e.printStackTrace(); false }
 }
 
 fun showStatusBarClockViaShizuku(): Boolean {
     return try {
-        if (!checkShizukuRunning() || !checkShizukuPermission()) {
-            return false
-        }
-        val method = Shizuku::class.java.getDeclaredMethod(
-            "newProcess",
-            Array<String>::class.java,
-            Array<String>::class.java,
-            String::class.java
-        )
+        if (!checkShizukuRunning() || !checkShizukuPermission()) return false
+        val method = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
         method.isAccessible = true
-        val process = method.invoke(null, arrayOf("sh", "-c", "settings delete secure icon_blacklist clock"), null, null) as Process
+        // Очищаем черный список, возвращая все иконки
+        val process = method.invoke(null, arrayOf("sh", "-c", "settings put secure icon_blacklist \"\""), null, null) as Process
         process.waitFor() == 0
-    } catch (e: Exception) {
-        e.printStackTrace()
-        false
-    }
+    } catch (e: Exception) { e.printStackTrace(); false }
+}
+
+fun restartSystemUI(): Boolean {
+    return try {
+        if (!checkShizukuRunning() || !checkShizukuPermission()) return false
+        val method = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
+        method.isAccessible = true
+        // Убиваем процесс SystemUI, чтобы он перезапустился и вернул часы
+        val process = method.invoke(null, arrayOf("sh", "-c", "pkill -f com.android.systemui"), null, null) as Process
+        process.waitFor() == 0
+    } catch (e: Exception) { e.printStackTrace(); false }
 }
 
 fun checkMagiskRoot(): Boolean {
@@ -405,7 +379,5 @@ fun checkMagiskRoot(): Boolean {
         os.writeBytes("exit\n")
         os.flush()
         process.waitFor() == 0
-    } catch (e: Exception) {
-        false
-    }
+    } catch (e: Exception) { false }
 }
